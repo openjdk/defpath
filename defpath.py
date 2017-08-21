@@ -1,6 +1,6 @@
-# Copyright 2007, 2013 Oracle and/or its affiliates. All Rights Reserved.
+# Copyright 2007, 2017, Oracle and/or its affiliates. All Rights Reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
-# 
+#
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
 # published by the Free Software Foundation.  Oracle designates this
@@ -40,7 +40,7 @@ import shutil
 from urlparse import urlparse, urlunparse, urljoin
 from urllib import urlopen
 from HTMLParser import HTMLParser
-from mercurial import hg, commands, util
+from mercurial import hg, commands, util, cmdutil
 
 
 # Config files
@@ -289,6 +289,28 @@ def defpath(ui, repo, peer, peer_push, walker, opts):
         ui.write("No hgrc files updated\n")
         return -1
 
+# From Mercurial 1.9, the preferred way to define commands is using the @command
+# decorator. If this isn't available, fallback on a simple local implementation
+# that just adds the data to the cmdtable.
+cmdtable = {}
+if hasattr(cmdutil, 'command'):
+    command = cmdutil.command(cmdtable)
+else:
+    def command(name, options, synopsis):
+        def decorator(func):
+            cmdtable[name] = func, list(options), synopsis
+            return func
+        return decorator
+
+opts = [("d", "default", False, "use current default path to compute push path"),
+        ("g", "gated", False, "create gated push URL"),
+        ("u", "user", "", "username for push URL"),
+        ("s", "secondary", "", "secondary peer repository base URL")
+        ] + commands.dryrunopts
+
+help = "[-d] [-g] [-u NAME] [-s SECONDARY] [PEER [PEER-PUSH]]"
+
+@command("defpath", opts, "hg defpath " + help)
 def cmd_defpath(ui, repo, peer=None, peer_push=None, **opts):
     """examine and manipulate default path settings
 
@@ -329,6 +351,7 @@ def cmd_defpath(ui, repo, peer=None, peer_push=None, **opts):
     """
     return defpath(ui, repo, peer, peer_push, walk_self, opts)
 
+@command("fdefpath", list(opts), "hg fdefpath " + help)
 def cmd_fdefpath(ui, repo, peer=None, peer_push=None, **opts):
     """examine and manipulate default path settings for a forest
 
@@ -375,16 +398,3 @@ def cmd_fdefpath(ui, repo, peer=None, peer_push=None, **opts):
 
     """
     return defpath(ui, repo, peer, peer_push, walk_forest, opts)
-
-opts = [("d", "default", False, "use current default path to compute push path"),
-        ("g", "gated", False, "create gated push URL"),
-        ("u", "user", "", "username for push URL"),
-        ("s", "secondary", "", "secondary peer repository base URL")
-        ] + commands.dryrunopts
-
-help = "[-d] [-g] [-u NAME] [-s SECONDARY] [PEER [PEER-PUSH]]"
-
-cmdtable = {
-    "defpath": (cmd_defpath, opts, "hg defpath " + help),
-    "fdefpath": (cmd_fdefpath, list(opts), "hg fdefpath " + help)
-}

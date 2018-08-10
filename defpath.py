@@ -1,4 +1,4 @@
-# Copyright 2007, 2017, Oracle and/or its affiliates. All Rights Reserved.
+# Copyright 2007, 2018, Oracle and/or its affiliates. All Rights Reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,12 @@ from urlparse import urlparse, urlunparse, urljoin
 from urllib import urlopen
 from HTMLParser import HTMLParser
 from mercurial import hg, commands, util, cmdutil
-
+try:
+    # Mercurial 4.3 and higher
+    from mercurial import registrar
+except ImportError:
+    registrar = {}
+    pass
 
 # Config files
 
@@ -293,7 +298,9 @@ def defpath(ui, repo, peer, peer_push, walker, opts):
 # decorator. If this isn't available, fallback on a simple local implementation
 # that just adds the data to the cmdtable.
 cmdtable = {}
-if hasattr(cmdutil, 'command'):
+if hasattr(registrar, 'command'):
+    command = registrar.command(cmdtable)
+elif hasattr(cmdutil, 'command'):
     command = cmdutil.command(cmdtable)
 else:
     def command(name, options, synopsis):

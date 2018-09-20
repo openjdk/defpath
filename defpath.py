@@ -40,13 +40,21 @@ import shutil
 from urlparse import urlparse, urlunparse, urljoin
 from urllib import urlopen
 from HTMLParser import HTMLParser
-from mercurial import hg, commands, util, cmdutil
+from mercurial import cmdutil, commands, error, hg, util
 try:
     # Mercurial 4.3 and higher
     from mercurial import registrar
 except ImportError:
     registrar = {}
     pass
+
+# Abort() was moved/copied from util to error in hg 1.3 and was removed from
+# util in 4.6.
+error_Abort = None
+if hasattr(error, 'Abort'):
+    error_Abort = error.Abort
+else:
+    error_Abort = util.Abort
 
 # Config files
 
@@ -174,12 +182,12 @@ def find_repo(ui, url, secondary):
     if probe_repo(ui, url):
         return url
     if not secondary:
-        raise util.Abort("%s: Repository not found" % url)
+        raise error_Abort("%s: Repository not found" % url)
     u = urlparse(url, "http", False)
     url2 = urljoin(secondary, upath(u))
     if probe_repo(ui, url2):
         return url2
-    raise util.Abort("%s: Repository not found\n       %s: Repository not found either"
+    raise error_Abort("%s: Repository not found\n       %s: Repository not found either"
                      % (url, url2))
     return None
 
@@ -234,7 +242,7 @@ def go(ui, repo, root, peer, peer_push, gated, user, dry_run, secondary,
     push = cfg_get(c, "paths", "default-push")
     if default:
         if peer or peer_push:
-            raise util.Abort("Peers cannot be specified together with -d flag")
+            raise error_Abort("Peers cannot be specified together with -d flag")
         peer = pull
     elif peer:
         peer = peer + subtree
@@ -289,7 +297,7 @@ def defpath(ui, repo, peer, peer_push, walker, opts):
         for d in walker(repo):
             go(ui, d, root=root, peer=peer, peer_push=peer_push, **opts)
         finish()
-    except util.Abort, x:
+    except error_Abort, x:
         ui.write("abort: %s\n" % x)
         ui.write("No hgrc files updated\n")
         return -1

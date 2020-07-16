@@ -39,7 +39,12 @@ import ConfigParser, StringIO
 import shutil
 from urlparse import urlparse, urlunparse, urljoin
 from urllib import urlopen
-from HTMLParser import HTMLParser
+try:
+    # Python 3.0 and higher
+    import html.parser as HTMLParser
+except ImportError:
+    from HTMLParser import HTMLParser
+    pass
 from mercurial import cmdutil, commands, error, hg, util
 try:
     # Mercurial 4.3 and higher
